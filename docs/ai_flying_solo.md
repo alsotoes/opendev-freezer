@@ -40,10 +40,13 @@ cited source before acting.
 
 ## Workflow
 
-1. **Triage** — confirm bug on launchpad; if a feature, propose an openspec change
-   (proposal → design → tasks) before touching code.
-2. **Branch** — inside `code/<repo>`, create a topic branch (`bug/####`, `bp/NAME`).
-   Never work on master.
+1. **Triage** — confirm bug on launchpad; if a feature, register a launchpad
+   blueprint (branch `bp/<name>`) and propose an openspec change (proposal →
+   design → tasks) before touching code. Larger features also need a spec first
+   (per config.yaml feature lifecycle).
+2. **Branch** — inside `code/<repo>`, sync upstream first
+   (`git remote update && git pull --ff-only origin master`), then create a topic
+   branch (`bug/####`, `bp/NAME`). Never work on master.
 3. **Implement** — pillars Understand→Research→Validate; all content upstream-clean
    (see config.yaml Upstream cleanliness).
 4. **Checkpoint: commit?** — present a diff summary + planned commit message; on
@@ -71,6 +74,10 @@ commit? / amend? / (never push)
 - stestr passes with 0 skipped, run in submodule venv; flake8 with CI-pinned versions
   clean on changed files; per config.yaml PROJECT STEERING RULES.
 - reno note + doc update present; cross-repo impact verified.
+- API-shape changes: api-ref docs + python-freezerclient + freezer-web-ui
+  coordinated in the same change (per config.yaml feature lifecycle); reno present.
+- Local bar run (CI-pinned flake8/pep8 + stestr) completed before the commit
+  checkpoint.
 - `git show` clean of stray/unrelated changes.
 - Content passes the Upstream cleanliness check (no `code/` paths, no builder-env
   references in code, docs, or messages).
@@ -78,8 +85,12 @@ commit? / amend? / (never push)
 ## References
 
 - OpenDev Developer's Guide: https://docs.opendev.org/opendev/infra-manual/latest/developers.html
+- OpenDev Getting Started (accounts, git-review -s setup):
+  https://docs.opendev.org/opendev/infra-manual/latest/gettingstarted.html
 - Manila dev environment (modern OpenStack project pattern):
   https://docs.openstack.org/manila/latest/contributor/development.environment.html
+- Manila proposing new features (blueprint/spec lifecycle, acceptance criteria):
+  https://docs.openstack.org/manila/latest/contributor/new_feature_workflow.html
 - Hacking style guide: https://docs.openstack.org/hacking/latest/
 - Reno release notes: https://docs.openstack.org/reno/latest/
 - Freezer bugs: https://bugs.launchpad.net/freezer

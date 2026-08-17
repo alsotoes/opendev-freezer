@@ -175,6 +175,13 @@ context: |
     check/gate job, +1 = verified. A comment like `recheck` shows a flaky retry.
   - Human +2/+1 (CRVW) lines: +2 = core approved; -1 = blocking concern. JFYI
     comments are informational.
+  - Zuul verify semantics: patchset upload triggers the check pipeline
+    (Verified ±1); after core approval (CRVW +2 and Workflow +1) the gate
+    pipeline runs (Verified ±2) and the change merges only on gate +2. On a
+    failed job, read the Zuul logs and fix the change; only genuinely flaky
+    infrastructure failures get a `recheck` — never for a real bug.
+  - Work in Progress = `Workflow:-1`, used for early feedback on unfinished
+    changes; the -1 resets on every new patchset.
   - PatchSet progression (Patch-set N) tells you what the author reworked in
     response to review feedback — compare PS diffs to see the review-driven change.
   - To integrate a change into this study repo: `git -C code/<repo> fetch
@@ -232,6 +239,13 @@ context: |
     commits declare dependencies with `Depends-On: <gerrit permalink>` (never change
     URLs, never create cycles).
   - Topic branches: work on `bug/<bug-number>` (bugs) or `bp/<blueprint>` (features).
+  - Feature lifecycle (mirrors manila new-feature-workflow): features register a
+    launchpad blueprint and branch `bp/<name>`; larger features propose a spec
+    (specs) before code, not after. API-shape changes MUST be coordinated
+    cross-repo: freezer-api schema + python-freezerclient methods + freezer-web-ui
+    (per FEATURE PLACEMENT), with api-ref docs and a reno note in the same change.
+    Local bar before the commit checkpoint: CI-pinned flake8/pep8 + stestr (venv
+    rule above).
   - Human in the loop (HITL) — workflow guardrails, normative:
     - The AI NEVER pushes: no `git push`, no `git review`/Gerrit, no
       `git send-email`. All pushes and Gerrit submissions are human actions.
