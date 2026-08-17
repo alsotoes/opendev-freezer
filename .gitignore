@@ -1,0 +1,67 @@
+# Binaries for programs and plugins
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test binary, build with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Project-local glide cache, RE: https://github.com/Masterminds/glide/issues/736
+.glide/
+
+# Directory to store files
+received_files/
+test_data/
+
+# Swap files
+*.swp
+
+# others
+venv/
+**/bin
+
+# smoke test
+*.log
+conf/smoke.conf
+test.sh
+
+# Temporary benchmark and filtering artifacts
+*_filtered.txt
+*_bench*.txt
+empty.txt
+
+# Coverage and profiles
+*.out
+*.prof
+
+# Compiled binaries and executable overrides
+momo
+src/momo
+src/src
+
+# Temporary local review body text files
+body*.txt
+.github/scripts/__pycache__/
+
+# Pentest generated artifacts (regenerable)
+pentest/server-logs/
+pentest/fuzzing-reports/
+pentest-results/
+
+# Repomix bundled outputs
+# Repomix outputs
+repomix-output.*
+repomix-output.xml
+repomix-output.txt
+repomix-output.json
+repomix-output.*
+*.repomix.*
+
+node_modules/
+package-lock.json
+package.json
+
