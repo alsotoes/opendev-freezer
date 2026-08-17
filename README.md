@@ -27,6 +27,7 @@ Main project knowledge base:
 |------|----------|
 | `docs/config-reference.md` | Reference for `openspec/config.yaml` structure, per-artifact rules, operations guidance |
 | `docs/workflow-guide.md` | OpenSpec propose → update → apply → archive workflow |
+| `docs/ai_flying_solo.md` | AI-as-principal-developer operating procedure (HITL checkpoints, 4 pillars, DoD; references config.yaml) |
 | `docs/test-documentation.md` | Test conventions and how to run them |
 | `docs/lessons-learned.md` | Durable analysis findings, Gerrit verdicts, feature-placement corrections |
 

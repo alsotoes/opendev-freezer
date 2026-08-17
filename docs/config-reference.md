@@ -106,7 +106,7 @@ operations:
 | Directory | Purpose | Status |
 |-----------|---------|--------|
 | `openspec/config.yaml` | Main configuration file (single source of truth, Rule 39) | ✓ Populated |
-| `docs/` | config-reference, workflow-guide, test-documentation, lessons-learned | ✓ Populated |
+| `docs/` | config-reference, workflow-guide, ai_flying_solo, test-documentation, lessons-learned | ✓ Populated |
 | `openspec/changes/` | Active change artifacts (`<change>/specs/freezer/<feature>/` delta specs) | Active |
 | `openspec/specs/` | Spec proposals and blueprints | Empty (populated when creating proposals) |
 | `code/freezer` | upstream freezer-agent + scheduler submodule | ✓ Cloned |

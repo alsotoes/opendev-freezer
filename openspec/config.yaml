@@ -215,6 +215,36 @@ context: |
   # primarily; the other submodules follow the same OpenStack conventions)
   # ═══════════════════════════════════════════════════════════════════════
   Convention notes:
+  - Upstream cleanliness (applies to everything destined for a code/ submodule —
+    product code, tests, doc/ RST, release notes, commit messages): content MUST read
+    as a native upstream contribution to opendev.org/openstack. Never reference this
+    builder environment: no umbrella repo, no GitHub mirror, no `code/`-prefixed
+    paths (upstream paths are submodule-relative, e.g. freezer/scheduler/arguments.py,
+    NOT code/freezer/...), no tooling of this workspace (autoskills, repomix, opencode
+    skills), no local machine/venv/CI details, no fabricated Change-Id. Umbrella-side
+    artifacts (openspec/, docs/, .agents/, this config) are exempt — the rule governs
+    only content that will be pushed upstream.
+  - Commit messages for upstream: ≤50-char summary line; body explains why (not just
+    what); reference bugs/blueprints with `Closes-Bug: #######` / `Implements:
+    blueprint NAME`; add `Signed-off-by` (git commit -s); let the git-review hook add
+    `Change-Id: I...` on commit/amend and NEVER invent or reuse one; squash to a
+    single commit per change before review; never commit on master. Cross-repo
+    commits declare dependencies with `Depends-On: <gerrit permalink>` (never change
+    URLs, never create cycles).
+  - Topic branches: work on `bug/<bug-number>` (bugs) or `bp/<blueprint>` (features).
+  - Human in the loop (HITL) — workflow guardrails, normative:
+    - The AI NEVER pushes: no `git push`, no `git review`/Gerrit, no
+      `git send-email`. All pushes and Gerrit submissions are human actions.
+    - The AI NEVER commits or amends on its own: at each commit/amend boundary it
+      presents a diff summary + proposed message and executes only after explicit
+      human approval (ask-first, execute-on-yes).
+    - The AI works only on new features and bug fixes; no cosmetic refactors,
+      drive-by cleanups, or toolchain churn unless part of the fix.
+    - The AI NEVER runs irreversible operations (force ops, branch deletion,
+      history rewrite) without human approval.
+    - The operating procedure (checkpoints, ask formats, 4 pillars, DoD) lives in
+      docs/ai_flying_solo.md; it MUST only reference these rules and never redefine
+      or duplicate them.
   - Configuration options defined in freezer/scheduler/arguments.py and freezer/common/config.py
   - Use oslo-config-generator to generate sample config files
   - Testing via stestr with coverage
