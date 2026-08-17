@@ -1,0 +1,310 @@
+schema: spec-driven
+
+context: |
+  Tech stack: Python, OpenStack
+  We use Oslo config, pbr, tox for testing
+  Domain: Backup and Restore as a Service Platform
+  Project: openstack/freezer (multi-repository project)
+  License: Apache-2.0
+
+  # ═══════════════════════════════════════════════════════════════════════
+  # REPOSITORY MAP — this repo is an umbrella study repo, NOT a product repo
+  # ═══════════════════════════════════════════════════════════════════════
+  This repo (opendev-freezer) contains the upstream OpenStack Freezer
+  submodules under `code/`. It is used to analyze commits, new features, bug
+  fixes, component layout, and Gerrit reviews across the whole Freezer project.
+  Never write product code here; analyze, spec, and document.
+
+  Submodules (all upstream @ opendev.org, reviewed on Gerrit, CI via Zuul):
+
+  1. `code/freezer` — freezer-agent (control/backup/restore code) + freezer-scheduler
+     (https://opendev.org/openstack/freezer, launchpad.net/freezer)
+  2. `code/freezer-api` — Freezer REST API (metadata server; SQLAlchemy backend)
+     (https://opendev.org/openstack/freezer-api)
+  3. `code/freezer-web-ui` — Horizon dashboard plugin (Django) for Freezer
+     (https://opendev.org/openstack/freezer-web-ui)
+  4. `code/python-freezerclient` — Python library + `freezer` CLI + openstackclient plugin
+     (https://opendev.org/openstack/python-freezerclient)
+
+  All review happens on Gerrit: `review.opendev.org:29418`, project refs
+  `openstack/<repo>.git` (see each submodule's `.gitreview`). CI is Zuul
+  (each repo has `.zuul.yaml`). Cross-repo gates: freezer-web-ui devstack job
+  pulls freezer + freezer-api + horizon + python-freezerclient together.
+
+  # ═══════════════════════════════════════════════════════════════════════
+  # COMPONENT MAP per submodule — what lives where
+  # ═══════════════════════════════════════════════════════════════════════
+
+  ## code/freezer — the agent and the scheduler (runs ON the backup nodes)
+  - freezer/main.py — entry point, arg dispatch, job packaging
+  - freezer/job.py — BackupJob / RestoreJob / InfoJob orchestration
+  - freezer/scheduler/ — scheduler machinery:
+      arguments.py (CLI/config options), freezer_scheduler.py (daemon loop),
+      scheduler_job.py (job execution), utils.py (client registration + active-job
+      polling), coordination.py (tooz locking), daemon.py, win_daemon.py, win_service.py
+  - freezer/engine/ — backup engines: tar/, rsync/, rsyncv2/, glance/, nova/, osbrick/;
+      engine.py (base), manager.py (loader)
+  - freezer/mode/ — "modes" (things to back up): fs, mysql, mongo, sqlserver, cinder,
+      cindernative, nova, glance, fslike
+  - freezer/snapshot/ — point-in-time snapshots: lvm.py, vss.py (Windows VSS + scripts/)
+  - freezer/storage/ — storage backends: base, swift, s3, local, ssh, ftp, multiple
+      (fan-out), physical; data is written directly to these, NOT through the API
+  - freezer/openstack/ — keystone clients (osclients.py), admin/backup/restore helpers
+  - freezer/utils/ — checksum, compress, crypt, exec_cmd, streaming, dates (utils.py)
+  - freezer/common/ — config.py (oslo options), client_manager.py
+  - freezer/exceptions/ — domain exception types (engine.py, utils.py, ...)
+  - freezer/lib/ — pep3143daemon (daemonization helper)
+  - devstack/ — devstack plugin to install the agent + scheduler
+
+  ## code/freezer-api — the metadata service (stateless REST, DB-backed)
+  - freezer_api/cmd/ — api.py (WSGI/Pecan startup), manage.py (DB migrate), status.py
+  - freezer_api/api/ — versions.py; v2/ holds the REST resources:
+      actions.py, backups.py, clients.py, jobs.py, sessions.py, homedoc.py
+      (routing table in v2/__init__.py `public_endpoints()`)
+  - freezer_api/api/common/ — middleware/auth plumbing
+  - freezer_api/db/ — SQLAlchemy backend:
+      sqlalchemy/driver.py + api.py (storage ops), sqlalchemy/models.py (tables),
+      sqlalchemy/migrations/ (Alembic), elasticsearch/ (DEPRECATED driver)
+  - freezer_api/storage/ — elasticv2.py (DEPRECATED; the config.py `storage`/`db_driver`
+      option now defaults to `sqlalchemy` ONLY — Elasticsearch support removed)
+  - freezer_api/common/ — config.py, exceptions.py, policy.py, policies/,
+      db_mappings.py, json_schemas.py, check.py
+  - freezer_api/{context.py, keystone_client.py, service.py, wsgi.py, policy.py}
+  - devstack/, api-ref/ — devstack plugin + API reference docs
+
+  ## code/freezer-web-ui — Horizon dashboard (Django plugin)
+  - freezer_ui/api/ — api.py (thin wrapper over python-freezerclient for Horizon),
+      rest/rest_api.py (prometheus/horizon REST endpoints)
+  - freezer_ui/<resource>/ pan Dashboards — one per domain object:
+      clients/, backups/, jobs/, sessions/, actions/ — each has panel.py (panel
+      registration), tables.py (Horizon tables), views.py, workflows/ (create/edit
+      wizards), templates/, urls.py
+  - freezer_ui/enabled/ — `_5050_*.py` files enabling panels in Horizon (django settings)
+  - freezer_ui/utils.py — service URL resolution (FREEZER_API_URL fallback, keystone)
+  - manage.py, devstack/, tools/ — devstack plugin installs into horizon
+
+  ## code/python-freezerclient — CLI + Python bindings for freezer-api
+  - freezerclient/client.py — ApiClient: endpoint/auth token/search/fetch core
+  - freezerclient/v2/ — one file per resource with cliff commands (FreezerList/
+      FreezerShow/FreezerCommand subclasses): actions.py, backups.py, clients.py,
+      jobs.py, sessions.py, client.py
+  - freezerclient/v2/managers/ — manager classes (actions, backups, clients, jobs, sessions)
+  - freezerclient/osc/ — openstackclient plugin (plugin.py + command registration)
+  - freezerclient/shell.py — `freezer` CLI entry (cliff CommandManager)
+  - freezerclient/{base.py, exceptions.py, utils.py}
+
+  # ═══════════════════════════════════════════════════════════════════════
+  # DATA FLOW — how the four repos talk to each other
+  # ═══════════════════════════════════════════════════════════════════════
+  1. freezer-scheduler (code/freezer) uses python-freezerclient to REGISTER the
+     node's capabilities (clients.create -> freezer-api) and to POLL active jobs
+     (`client.jobs.list(search={"match_not":[{"status":"completed"}]})`,
+     centralized_scheduler flag for all-projects). Job execution is dispatched to
+     BackupJob/RestoreJob in code/freezer.
+  2. The agent writes backup DATA directly to storage backends (swift/s3/ssh/local/
+     ftp). The API NEVER stores blobs — it stores only metadata (clients, jobs,
+     sessions, backups, actions, action reports).
+  3. python-freezerclient + freezer-web-ui call freezer-api REST v2
+     (`/{project_id}/{resource}s` collection + item resources, plus
+     sessions/{id}/action, sessions/{id}/jobs/{job_id}, jobs/{id}/event).
+  4. freezer-api -> SQLAlchemy/MariaDB via sqlalchemy driver. Keystone for auth,
+     oslo.policy for authorization (project_id scoping).
+  Core domain objects: Client, Job (+ JobAction), Session, Backup, Action,
+  ActionReport, UserCredentials (tables in freezer_api/db/sqlalchemy/models.py).
+
+  # ═══════════════════════════════════════════════════════════════════════
+  # FEATURE PLACEMENT — which feature belongs in which repo
+  # ═══════════════════════════════════════════════════════════════════════
+  → code/freezer (agent): backup/restore engines (tar/rsync/rsyncv2), openstack
+    media (nova/glance/cinder/osbrick), backup modes (fs/mysql/mongo/sqlserver),
+    snapshots (LVM/VSS), storage backends + fan-out (multiple), streaming,
+    compression, AES encryption, incremental/differential policies, remove-older-than
+    cleanup + AdminJob, pre/post scripts, scheduler daemon (periodic executions,
+    coordination, centralized scheduling), windows services, trickle/rate limiting.
+  → code/freezer-api: any new REST resource or v2 field, metadata CRUD, DB schema
+    migrations (Alembic), search semantics over metadata, keystone integration,
+    RBAC/policies, project_id scoping, API docs (api-ref), WSGI/front-end plumbing,
+    response schemas (json_schemas.py). NOTE: DB backend changes go here but only
+    `sqlalchemy` is supported — do not resurrect Elasticsearch.
+  → code/freezer-web-ui: Horizon panels, tables, forms/workflows, AJAX rest
+    endpoints, dashboard UX for clients/jobs/sessions/backups/actions. UI never
+    talks to freezer-api directly — it goes through python-freezerclient.
+  → code/python-freezerclient: CLI commands, openstackclient plugin commands,
+    Python binding/method signatures, pagination/limit/offset helpers, shell
+    plumbing. Schema of what it sends must stay in sync with freezer-api v2.
+  Cross-repo rule: a feature that changes the API shape MUST be coordinated
+  between freezer-api (endpoint/schema) and python-freezerclient (client methods)
+  and, when user-facing, freezer-web-ui. Search-and-edit across all four repos in
+  one openspec change; keep release notes in each affected repo reno/.
+
+  # ═══════════════════════════════════════════════════════════════════════
+  # ONE-OFF ANALYSIS — commits, features, bug fixes
+  # ═══════════════════════════════════════════════════════════════════════
+  Commands: `git -C code/<repo> log --oneline`, `git show`, `git log -p -- <path>`.
+  Upstream repo URLs are in each submodule's .gitreview (review.opendev.org).
+
+  Analyzing a feature/commit:
+  1. Identify target repo via FEATURE PLACEMENT above; confirm by grepping the
+     touched paths in `git show --stat`.
+  2. Read the commit message fully — OpenStack commits embed the Gerrit change-id
+     (`Change-Id: Ic...`) and often the launchpad bug/blueprint number. Resolve
+     bug refs on launchpad.net/<project>, specs on specs.openstack.org.
+  3. Check the companion reno release note (releasenotes/notes/*.yaml) — it states
+     the intended user-visible behavior.
+  4. For behavior reasoning, trace: CLI arg → scheduler/agent config (arguments.py,
+     common/config.py) → engine/mode/storage module → API schema/client method.
+  5. Cross-repo features: verify the sibling commits exist in the other
+     submodules (a v2 field change is never airborne in only one repo).
+
+  Analyzing a bug fix:
+  - Commit summary usually names the bug. Confirm root-cause by reproducing the
+    scenario in the launchpad report and mapping to the enclosing module.
+  - Check for regression tests in the test suite (freezer/tests, freezer_api/tests,
+    freezerclient/tests, freezer_ui/tests) and for related Gerrit comments.
+
+  # ═══════════════════════════════════════════════════════════════════════
+  # GERRIT REVIEW ANALYSIS
+  # ═══════════════════════════════════════════════════════════════════════
+  Gerrit host: review.opendev.org (project refs in .gitreview; port 29418 for SSH).
+  REST API: https://review.opendev.org/changes/<change-id>?o=... (open; comments via
+  ?o=CURRENT_REVISION&o=COMMENTS or /revisions/<rev>/comments; `Authorization`
+  header for private/bots).
+
+  Reading the conversation:
+  - Bot comments (openstack-ci / zuul / no-op) signal gate results: -1 = FAILED
+    check/gate job, +1 = verified. A comment like `recheck` shows a flaky retry.
+  - Human +2/+1 (CRVW) lines: +2 = core approved; -1 = blocking concern. JFYI
+    comments are informational.
+  - PatchSet progression (Patch-set N) tells you what the author reworked in
+    response to review feedback — compare PS diffs to see the review-driven change.
+  - To integrate a change into this study repo: `git -C code/<repo> fetch
+    https://opendev.org/openstack/<repo> refs/changes/<NN>/<change>/<ps>` then
+    inspect. Prefer analyzing upstream `master` state in the submodule for the
+    "current truth".
+
+  Review verdict summary template (store in docs/lessons-learned.md):
+  change-id, title, repo, PS iterations, votes (+2/-1), gate result, review themes,
+  final outcome.
+
+  # ═══════════════════════════════════════════════════════════════════════
+  # AGENT & CLIENT USAGE — openspec, gemini, cody, kiro, antigravity, ...
+  # ═══════════════════════════════════════════════════════════════════════
+  - The COMPONENT MAP and FEATURE PLACEMENT sections are the canonical answer to
+    "where is X implemented" and "which repo should hold feature Y". All agents
+    (openspec, Gemini, Claude Code/Cody, Kiro, antigravity, ...) must load these
+    before writing or analyzing Freezer code.
+  - Use the OpenSpec workflow for structured changes: propose (proposal.md) →
+    update (design/tasks) → apply → archive. Change artifacts live under
+    openspec/changes/<change>/ with specs/freezer/<feature>/ delta spec.
+  - For a new analysis task create a docs/ note + optionally an openspec change;
+    never edit code/ submodules directly unless applying an approved change.
+  - Domain answers to common agent questions:
+    * "job/session/action" → freezer-api domain model + freezer-web-ui panels
+    * "how does a backup run" → code/freezer job.py + openstack/backup.py
+    * "how does scheduling work" → code/freezer scheduler/ (poll API for active
+      jobs, coordination via tooz, central vs per-node)
+    * "new storage/engine/mode/CLI option" → code/freezer, and per FEATURE PLACEMENT
+    * "CLI command" → code/python-freezerclient v2/ + v2/managers/ + shell.py
+    * "new REST endpoint" → code/freezer-api api/v2/ + db driver + json_schemas
+    * "UI panel" → code/freezer-web-ui freezer_ui/<resource>/
+    - Query one repo with `git -C code/<repo> grep` and the other three for
+      cross-references before answering; Freezer features routinely span repos.
+
+  # ═══════════════════════════════════════════════════════════════════════
+  # PROJECT STEERING RULES — engineering conventions (applies to code/freezer
+  # primarily; the other submodules follow the same OpenStack conventions)
+  # ═══════════════════════════════════════════════════════════════════════
+  Convention notes:
+  - Configuration options defined in freezer/scheduler/arguments.py and freezer/common/config.py
+  - Use oslo-config-generator to generate sample config files
+  - Testing via stestr with coverage
+  - Documentation built with Sphinx and openstackdocstheme
+  - Code style: flake8 (ignore H405,H404,H403,H401,W504,W605)
+  - Release notes generated with Oslo Reno
+  - Exceptions: define in freezer/exceptions/ (pattern: engine.py, utils.py); raise
+    specific exception types, never a bare Exception (H202 flags assertRaises(Exception)
+    in tests). New date helpers raise DateException from freezer/exceptions/utils.py.
+  - H102 gotcha: the Apache-2.0 license-header check only triggers on files larger than
+    10 lines. Adding a class to a small file past 10 lines requires adding the header.
+  - Dates: canonical ISO datetime is YYYY-MM-DDTHH:MM:SS (T separator, zero-padded).
+    Parse and validate with utils.date_to_timestamp, which rejects space separators,
+    unpadded fields, and impossible calendar dates; keep one parser path for both
+    validation and conversion.
+  - Tests: unit tests are the local bar and must pass with 0 skipped. Integration tests
+    are env-gated by FREEZER_TEST_* variables (SSH/Swift/LVM) and require real
+    infrastructure; they run in CI, do not chase them locally.
+  - Validation rules:
+    - A regex shape check is NOT a validity check: validate calendar semantics with the
+      same parser used for conversion (route input through the parser itself, do not
+      keep a separate shape-only gate that can drift from it).
+    - float() accepts 'inf' and 'nan' (and bool: float(True) is 1.0): always gate
+      numeric input with math.isfinite, a sign check, and explicit bool rejection
+      before producing timestamps or timedeltas.
+    - Huge finite values can still overflow datetime.timedelta/mktime: perform the
+      conversion at validation time so overflow is a clean error, not a crash.
+    - int() truncates floats, accepts booleans, and strips whitespace: do not build
+      permissive int()-based gate helpers; route input through strict conversions.
+    - Check combinations, not just individual inputs: an option may be valid in
+      isolation and ambiguous together — enforce "exactly one" exclusive group
+      semantics (zero or more than one is an error), not silent priority.
+    - Truthiness is not "was it supplied": use `is not None` (not `if x:`) to
+      detect whether a config value was provided, so explicit falsy values like
+      `''` or `0` are validated rather than silently treated as absent.
+    - Local linters can be newer than CI: run the flake8/hacking/pycodestyle
+      versions pinned by test requirements (CI openstack-tox-pep8 uses pycodestyle
+      2.5.0), because newer releases may miss errors CI catches (e.g. E302 blank
+      lines).
+    - Explain "why add an option that duplicates an existing one" in the commit
+      message: cite the misleading-name semantics (e.g. a *before*-cutoff option
+      named like a *from*-date), any prior abandoned fix, and confirm the old
+      option stays functional/deprecated — otherwise the rename reads as scope
+      creep to reviewers.
+    - Compute a derived value once (in validation) and re-use it (in execution) instead
+      of recomputing in two places where the code can drift.
+    - Validate user input before expensive or side-effecting setup (clients, auth), so
+      errors are cheap and unambiguous.
+    - Removal execution path: when removal options are set during a backup/restore
+      action, inject a secondary AdminJob execution (main.py). The ADMIN action
+      already runs AdminJob, so the hook must skip it to avoid double execution.
+    - Swift storage listdir: must handle both 'subdir' (pseudo-directory) and 'name'
+      (object) entries from swiftclient get_container. The original f['subdir'] access
+      raised KeyError on object entries, swallowed by broad except→[].
+    - Swift storage rmtree: always pass full_listing=True to get_container. Without
+      pagination, only the first 10000 objects are deleted, leaving segments orphaned.
+
+per-artifact_rules:
+  task:
+    - Break tasks into chunks of max 2 hours
+    - Reference relevant specs from specs.openstack.org
+    - Include explicit tasks for edge-case input validation (non-finite numbers,
+      impossible dates, wrong types) and for verifying validation runs before
+      any client/auth setup
+    - When the task touches a Freezer feature, name the target repo from FEATURE
+      PLACEMENT and check the sibling repos for cross-repo impact
+    - For commit/feature review tasks, pull the Gerrit change (patchset diff) and
+      the reno release note before writing
+  proposal:
+    - Keep proposals under 500 words
+    - Include "Non-goals" section
+    - Reference related blueprints/gardens
+    - State explicitly which submodules are affected and what must change in each
+      (code/freezer, freezer-api, freezer-web-ui, python-freezerclient)
+
+operations:
+    apply:
+      guidance:
+        - Keep test summaries concise
+        - Ensure all new options have corresponding oslo-config-generator update
+        - Run stestr run and flake8 on changed files before committing (flake8 with
+          the CI-pinned versions; newer local pycodestyle can miss errors CI enforces)
+        - New or deprecated CLI options must include a config.py StrOpt, the
+          oslo-config-generator sample update, a doc/README.rst update, and a reno
+          release note (features and deprecations)
+        - For cross-repo changes, verify each affected submodule gets its matching
+          code, tests, and reno note
+    archive:
+      guidance:
+        - Summarize the archive outcome before finishing
+        - Update release notes with new findings
+        - Record durable analysis results (gerrit verdicts, repo layout findings,
+          feature-placement corrections) into docs/lessons-learned.md
