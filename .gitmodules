@@ -1,0 +1,12 @@
+[submodule "code/freezer"]
+	path = code/freezer
+	url = https://opendev.org/openstack/freezer
+[submodule "code/freezer-api"]
+	path = code/freezer-api
+	url = https://opendev.org/openstack/freezer-api
+[submodule "code/freezer-web-ui"]
+	path = code/freezer-web-ui
+	url = https://opendev.org/openstack/freezer-web-ui
+[submodule "code/python-freezerclient"]
+	path = code/python-freezerclient
+	url = https://opendev.org/openstack/python-freezerclient
