@@ -15,11 +15,12 @@ This document describes the OpenSpec workflow for the OpenStack Freezer project,
 This umbrella repo bundles the upstream Freezer repos as submodules under `code/`.
 OpenSpec artifacts (config, specs, changes) live at the repo root; product code and
 tests live inside the submodules. Commands like `stestr run` and `flake8` operate
-inside `code/freezer/` (the agent repo). E.g.:
+inside `code/freezer/` (the agent repo), using a venv created INSIDE that submodule
+(mandated by PROJECT STEERING RULES — never run tools from the umbrella root). E.g.:
 
 ```bash
 cd code/freezer
-source .venv/bin/activate   # or the environment for that submodule
+python3 -m venv .venv && source .venv/bin/activate
 stestr run
 ```
 

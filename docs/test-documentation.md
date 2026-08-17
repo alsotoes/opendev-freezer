@@ -3,11 +3,15 @@
 ## Repo layout note
 
 Test commands below run inside the `code/freezer` submodule (the agent repo), where
-`.stestr.conf`, `test-requirements.txt` and the `.venv` live. Change into it first:
+`.stestr.conf`, `test-requirements.txt` live. You MUST use a venv created INSIDE the
+submodule (e.g. `code/freezer/.venv`) — never run tools from the umbrella root. The
+venv is gitignored inside the submodule, so the umbrella root stays clean.
 
 ```bash
 cd code/freezer
+python3 -m venv .venv
 source .venv/bin/activate
+pip install -r requirements.txt -r test-requirements.txt
 stestr run
 ```
 

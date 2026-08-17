@@ -13,15 +13,11 @@
 # Project-local glide cache, RE: https://github.com/Masterminds/glide/issues/736
 .glide/
 
-# Directory to store files
-received_files/
-test_data/
-
 # Swap files
 *.swp
 
 # others
-venv/
+**/venv/
 **/bin
 
 # smoke test
@@ -38,19 +34,9 @@ empty.txt
 *.out
 *.prof
 
-# Compiled binaries and executable overrides
-momo
-src/momo
-src/src
-
 # Temporary local review body text files
 body*.txt
 .github/scripts/__pycache__/
-
-# Pentest generated artifacts (regenerable)
-pentest/server-logs/
-pentest/fuzzing-reports/
-pentest-results/
 
 # Repomix bundled outputs
 # Repomix outputs
@@ -64,4 +50,3 @@ repomix-output.*
 node_modules/
 package-lock.json
 package.json
-

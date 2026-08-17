@@ -233,6 +233,11 @@ context: |
   - Tests: unit tests are the local bar and must pass with 0 skipped. Integration tests
     are env-gated by FREEZER_TEST_* variables (SSH/Swift/LVM) and require real
     infrastructure; they run in CI, do not chase them locally.
+  - Testing runs in a venv, always INSIDE the target submodule (e.g. code/freezer/.venv):
+    create it there, activate it, and run stestr/flake8/tox from that submodule working
+    tree. Never run the tools from the umbrella repo root. Submodule venv/ dirs are
+    gitignored, so the umbrella root stays clean. After any openspec/config.yaml edit,
+    validate it with `python3 -c "import yaml; yaml.safe_load(open('openspec/config.yaml'))"`.
   - Validation rules:
     - A regex shape check is NOT a validity check: validate calendar semantics with the
       same parser used for conversion (route input through the parser itself, do not
