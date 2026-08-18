@@ -5,28 +5,30 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+. "$ROOT/scripts/lib/gerrit.sh"
+
 CID="${1:?usage: gerrit-fetch.sh <change-id|number>}"
-BASE="https://review.opendev.org"
 OUT="$ROOT/reviews"; mkdir -p "$OUT"
 
-tmp="$(mktemp)"  # JSON before Gerrit's magic-prefix strip
-curl -fsSL -H 'Accept: application/json' "$BASE/changes/$CID?o=CURRENT_REVISION&o=CURRENT_COMMIT&o=MESSAGES" -o "$tmp"
-
+tmp="$(mktemp)"
+gerrit_get "changes/$CID?o=CURRENT_REVISION&o=CURRENT_COMMIT&o=MESSAGES&o=DETAILED_ACCOUNTS" > "$tmp"
 python3 - "$tmp" "$OUT/$CID.json" <<'PY'
 import json, sys
-raw, out = sys.argv[1], sys.argv[2]
-data = json.load(open(raw)) if not open(raw).read().lstrip().startswith(")]}'") else json.loads(open(raw).read()[4:])
-open(out, "w").write(json.dumps(data, indent=2))
+raw = open(sys.argv[1]).read()
+data = json.loads(raw)
+open(sys.argv[2], "w").write(json.dumps(data, indent=2))
 print(f"Change: {data.get('subject','')}  [{data.get('status','?')}]")
 print(f"  project: {data.get('project','?')}  branch: {data.get('branch','?')}")
-print(f"  ref: {data.get('refs','?')}  updates: {data.get('updated','?')}")
+print(f"  updates: {data.get('updated','?')}")
 rev = (data.get('revisions') or {})
-for patchset, meta in reversed(list(rev.items())):
+for patchset, meta in sorted(rev.items(), key=lambda kv: (kv[1].get('_number',0))):
     print(f"  patchset:  {meta.get('_number','?')}  {meta.get('ref','?')}")
 msgs = data.get('messages') or []
 print(f"\n  messages ({len(msgs)}):")
 for m in msgs:
-    author = (m.get('author') or {}).get('name', m.get('author', {}).get('username','?'))
+    a = m.get('author') or {}
+    author = a.get('name') or a.get('username') or '?'
     print(f"   - [{m.get('date','?')}] {author}: {m.get('message','').strip()[:200]}")
-print(f"\nSaved: {out}")
+print(f"\nSaved: {sys.argv[2]}")
 PY
+rm -f "$tmp"
