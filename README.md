@@ -30,6 +30,7 @@ Main project knowledge base:
 | `docs/ai_flying_solo.md` | AI-as-principal-developer operating procedure (HITL checkpoints, 4 pillars, DoD; references config.yaml) |
 | `docs/test-documentation.md` | Test conventions and how to run them |
 | `docs/lessons-learned.md` | Durable analysis findings, Gerrit verdicts, feature-placement corrections |
+| `docs/environment.md` | Environment inventory: machine/runtimes/IDE/MCP/skills/tooling + tested matrix |
 
 Source of truth for all steering rules and engineering standards:
 [`openspec/config.yaml`](openspec/config.yaml) (see `context` block — "Project Steering
