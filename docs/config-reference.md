@@ -72,6 +72,21 @@ operations:
   - Gerrit review analysis workflow and verdict summary template
   - Engineering convention notes (validation rules, testing, style, Swift gotchas)
 
+##### `context` sections (anchors used throughout the umbrella docs/skills)
+
+| Section (anchor) | Purpose |
+|------------------|---------|
+| `REPOSITORY MAP` | Umbrella study repo vs the 4 upstream product repos, CI (Zuul), Gerrit |
+| `COMPONENT MAP` | Where each Freezer component lives per submodule |
+| `DATA FLOW` | How the four repos talk to each other (API ↔ client ↔ web-ui) |
+| `FEATURE PLACEMENT` | Which feature belongs in which repo (canonical "where is X") |
+| `ONE-OFF ANALYSIS` | Commit / feature / bugfix analysis workflow |
+| `GERRIT REVIEW ANALYSIS` | Gerrit + Zuul verify semantics + verdict template |
+| `AGENT & CLIENT USAGE` | Which agents load what; `fz` tooling usage; domain answers |
+| `PROJECT STEERING RULES` | Normative engineering conventions + HITL guardrails (Rule 39) |
+
+These eight anchors MUST remain listed here: `scripts/audit.sh` verifies the mirror.
+
 #### `per-artifact_rules`
 - **Purpose**: Custom rules for specific artifact types (proposals, tasks)
 - **Rules**:

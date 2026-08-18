@@ -1,12 +1,16 @@
 #!/usr/bin/env bash
-# audit.sh — Freezer umbrella readiness report.
+# audit.sh [--quick] — Freezer umbrella readiness report.
 #
 # Offline-friendly consistency checks. Each check reports PASS/FAIL; the
 # script exits nonzero if any check fails. Purely read-only: never writes
 # into code/ submodules, never pushes.
+#
+# --quick: skips submodule checks (used by the umbrella pre-commit hook, so a
+# root commit is never blocked by in-flight submodule work).
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+QUICK=0; [ "${1:-}" = "--quick" ] && QUICK=1
 FAIL=0
 
 pass() { echo "  PASS  $1"; }
@@ -39,6 +43,21 @@ readme = open(os.path.join(root, "README.md")).read()
 missing = [d for d in docs if d not in readme]
 raise SystemExit(0 if not missing else 1)
 PY
+check "config-reference.md mirrors config.yaml sections" python3 - "$ROOT" <<'PY'
+import re, sys
+root = sys.argv[1]
+cfg = open(f"{root}/openspec/config.yaml").read()
+ref = open(f"{root}/docs/config-reference.md").read()
+sects = re.findall(r'^  # ([A-Z][A-Z &\'\-]+) —', cfg, re.M)
+missing = [s for s in sects if s not in ref]
+raise SystemExit(0 if not missing else 1)
+PY
+
+if [ "$QUICK" -eq 1 ]; then
+  echo "== result (quick — submodule checks skipped) =="
+  if [ "$FAIL" -eq 0 ]; then echo "  ALL QUICK CHECKS PASSED"; else echo "  $FAIL CHECK(S) FAILED" >&2; exit 1; fi
+  exit 0
+fi
 
 echo "== submodules =="
 while read -r _name path; do
