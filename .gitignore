@@ -53,3 +53,7 @@ package.json
 
 # Fetched gerrit analysis artifacts (scripts/gerrit-fetch.sh output)
 reviews/
+
+# Sideloaded upstream mirrors (scripts/upstream-preview.sh) and root tool venv
+.upstream/
+.venv-tools/
