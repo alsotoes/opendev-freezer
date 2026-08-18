@@ -1,0 +1,23 @@
+# Umbrella-root pre-commit hooks (local only).
+# Install:  bash scripts/bootstrap.sh --tools  (creates .venv-tools + hooks)
+# These guard root-side artifacts; they never touch code/ submodules.
+repos:
+  - repo: local
+    hooks:
+      - id: fz-audit
+        name: fz umbrella audit (--quick)
+        entry: bash scripts/audit.sh --quick
+        language: system
+        pass_filenames: false
+      - id: fz-config-yaml
+        name: parse openspec/config.yaml
+        entry: python3 -c "import yaml; yaml.safe_load(open('openspec/config.yaml'))"
+        files: ^openspec/config\.yaml$
+        language: system
+        pass_filenames: false
+      - id: fz-scripts-syntax
+        name: bash -n umbrella scripts
+        entry: bash -n scripts/fz scripts/bootstrap.sh scripts/audit.sh scripts/upstream-preview.sh scripts/gerrit-search.sh scripts/gerrit-fetch.sh scripts/new-reno.sh scripts/palace-sync.sh
+        files: ^scripts/
+        language: system
+        pass_filenames: false

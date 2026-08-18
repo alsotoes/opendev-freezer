@@ -9,8 +9,25 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 REPOS="freezer freezer-api freezer-web-ui python-freezerclient"
-QUICK=0
-[ "${1:-}" = "--quick" ] && QUICK=1
+QUICK=0; TOOLS=0
+for arg in "$@"; do
+  case "$arg" in
+    --quick) QUICK=1 ;;
+    --tools) TOOLS=1 ;;
+    *) echo "bootstrap: unknown option '$arg' (--quick | --tools)" >&2; exit 2 ;;
+  esac
+done
+
+if [ "$TOOLS" -eq 1 ]; then
+  echo "=== umbrella root tools (.venv-tools) ==="
+  if [ ! -x "$ROOT/.venv-tools/bin/pre-commit" ]; then
+    python3 -m venv "$ROOT/.venv-tools"
+    "$ROOT/.venv-tools/bin/pip" install --quiet pre-commit
+  fi
+  "$ROOT/.venv-tools/bin/pre-commit" install
+  echo "  pre-commit ready in $ROOT/.venv-tools (audit gates every root commit)"
+  [ "$QUICK" -eq 0 ] || exit 0
+fi
 
 for repo in $REPOS; do
   dir="$ROOT/code/$repo"
