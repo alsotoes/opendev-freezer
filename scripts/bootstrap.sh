@@ -22,7 +22,7 @@ if [ "$TOOLS" -eq 1 ]; then
   echo "=== umbrella root tools (.venv-tools) ==="
   if [ ! -x "$ROOT/.venv-tools/bin/pre-commit" ]; then
     python3 -m venv "$ROOT/.venv-tools"
-    "$ROOT/.venv-tools/bin/pip" install --quiet pre-commit
+    "$ROOT/.venv-tools/bin/pip" install --quiet --isolated pre-commit
   fi
   "$ROOT/.venv-tools/bin/pre-commit" install
   echo "  pre-commit ready in $ROOT/.venv-tools (audit gates every root commit)"
@@ -34,12 +34,14 @@ for repo in $REPOS; do
   echo "=== $repo ==="
   [ -d "$dir" ] || { echo "  skip: missing $dir"; continue; }
   # Local (untracked) exclude so .venv never dirties a submodule; works even
-  # where the upstream repo has no handler in its own .gitignore.
-  exclude="$dir/.git/info/exclude"
+  # where the upstream repo has no handler in its own .gitignore. The git dir
+  # for a submodule lives under the umbrella's .git/modules/, not <dir>/.git.
+  gitdir="$(git -C "$dir" rev-parse --absolute-git-dir 2>/dev/null)" || gitdir="$dir/.git"
+  exclude="$gitdir/info/exclude"
   [ -f "$exclude" ] && grep -qxF '.venv/' "$exclude" || printf '\n# per-builder venv (umbrella bootstrap.sh)\n.venv/\n' >> "$exclude"
   if [ ! -x "$dir/.venv/bin/python" ]; then
     python3 -m venv "$dir/.venv"
-    "$dir/.venv/bin/pip" install --quiet --upgrade pip
+    "$dir/.venv/bin/pip" install --quiet --isolated --upgrade pip
   else
     echo "  venv present"
   fi
@@ -50,8 +52,8 @@ for repo in $REPOS; do
   # shellcheck disable=SC1090
   source "$dir/.venv/bin/activate"
   cd "$dir"
-  pip install --quiet -r requirements.txt -r test-requirements.txt
-  pip install --quiet tox pre-commit
+  pip install --quiet --isolated -r requirements.txt -r test-requirements.txt
+  pip install --quiet --isolated tox pre-commit
   if [ -f .pre-commit-config.yaml ]; then
     pre-commit install
   fi
