@@ -60,9 +60,16 @@ python3 -c "import yaml; yaml.safe_load(open('openspec/config.yaml'))"
 | `scripts/fz drift [--fetch]` | Report submodule pin drift vs upstream `master` |
 | `scripts/fz triage [--open]` | Open the launchpad freezer bug queue |
 | `scripts/fz audit` | Full readiness report (alias of `scripts/audit.sh`) |
-| `scripts/bootstrap.sh [--quick]` | Create per-submodule venvs + CI-pinned deps + pre-commit hooks |
-| `scripts/audit.sh` | Offline consistency checks (config, docs sync, submodules, skills) |
+| `scripts/fz preview <repo> <ref>` | Diff a Gerrit/upstream ref vs current pin (no submodule writes) |
+| `scripts/fz search [<query>]` | Gerrit change table across the 4 projects |
+| `scripts/fz status <change-id>` | Live votes (Verified/Code-Review/Workflow) + last activity |
+| `scripts/bootstrap.sh [--quick] [--tools]` | Create per-submodule venvs + CI-pinned deps + pre-commit hooks; `--tools` sets up umbrella-root pre-commit |
+| `scripts/audit.sh [--quick]` | Offline consistency checks (config, docs sync, submodules, skills); `--quick` = pre-commit mode, skips submodule checks |
 | `scripts/gerrit-fetch.sh <change-id>` | Fetch an OpenDev Gerrit change summary to `reviews/` |
+| `scripts/upstream-preview.sh <repo> <ref>` | Diff any Gerrit ref/Change-Id vs current pin via a sideloaded bare mirror (`.upstream/`); never touches `code/` |
+| `scripts/gerrit-search.sh ["query"]` | Compact Gerrit table across the 4 Freezer projects (default: open) |
+| `scripts/new-reno.sh <repo> <slug>` | Scaffold a reno release note in the submodule (prefers `reno new`) |
+| `scripts/palace-sync.sh` | On-demand MemPalace mining of docs/ + openspec/ (personal; not CI) |
 
 `repo` ∈ {`freezer`, `freezer-api`, `web-ui`, `client`}. Venv-mandatory rule:
 tools run only inside `code/<repo>/.venv`, never from the umbrella root.
