@@ -50,3 +50,6 @@ repomix-output.*
 node_modules/
 package-lock.json
 package.json
+
+# Fetched gerrit analysis artifacts (scripts/gerrit-fetch.sh output)
+reviews/

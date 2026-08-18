@@ -1,0 +1,118 @@
+#!/usr/bin/env bash
+# fz — OpenStack Freezer umbrella tool runner.
+#
+# Runs Freezer tools INSIDE the target submodule venv (per PROJECT STEERING
+# RULES in openspec/config.yaml: never run tools from the umbrella root).
+# Root-only; never writes into code/ submodules.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+REPO_SUBFOLDER_DEFS="freezer code/freezer
+freezer-api code/freezer-api
+web-ui code/freezer-web-ui
+client code/python-freezerclient"
+
+repo_dir() {
+  local name="$1"
+  local line
+  line="$(printf '%s\n' "$REPO_SUBFOLDER_DEFS" | awk -v n="$name" '$1==n {print $2; exit}')"
+  if [ -z "$line" ]; then
+    echo "fz: unknown repo '$name'. Valid: freezer, freezer-api, web-ui, client" >&2
+    exit 2
+  fi
+  echo "$ROOT/$line"
+}
+
+in_venv() {
+  local dir="$1"
+  if [ ! -x "$dir/.venv/bin/python" ]; then
+    echo "fz: no venv in $dir — run 'scripts/bootstrap.sh' first (venv-mandatory rule)." >&2
+    exit 3
+  fi
+  # shellcheck disable=SC1090
+  source "$dir/.venv/bin/activate"
+}
+
+usage() {
+  cat <<'EOF'
+fz — run Freezer tools inside submodule venvs (umbrella root-only)
+
+USAGE
+  fz test   <repo>                 unit tests (stestr, or repo's test runner)
+  fz lint   <repo>                 CI-style lint (flake8, pre-commit where present)
+  fz tox    <repo> [<env>]         run tox (venv install if missing)
+  fz drift  [--fetch]              report submodule pin drift vs upstream master
+  fz triage [--open]               launchpad freezer bug candidate queue
+  fz audit                         full readiness check (scripts/audit.sh)
+
+REPOS
+  freezer | freezer-api | web-ui | client
+EOF
+  exit 0
+}
+
+[ $# -eq 0 ] && usage
+cmd="$1"; shift
+
+case "$cmd" in
+  test)
+    repo="${1:?need repo}"; dir="$(repo_dir "$repo")"; in_venv "$dir"
+    (cd "$dir"
+     if [ -f .stestr.conf ]; then
+       stestr run
+     elif [ -f run_tests.sh ]; then
+       bash run_tests.sh
+     elif [ -f tox.ini ]; then
+       tox -epy
+     else
+       echo "fz: no known test runner in $dir" >&2; exit 4
+     fi)
+    ;;
+  lint)
+    repo="${1:?need repo}"; dir="$(repo_dir "$repo")"; in_venv "$dir"
+    (cd "$dir"
+     if command -v pre-commit >/dev/null 2>&1 && [ -f .pre-commit-config.yaml ]; then
+       pre-commit run --all-files
+     elif command -v flake8 >/dev/null 2>&1; then
+       flake8 .
+     else
+       echo "fz: no flake8/pre-commit in venv — bootstrap it." >&2; exit 4
+     fi)
+    ;;
+  tox)
+    repo="${1:?need repo}"; dir="$(repo_dir "$repo")"; in_venv "$dir"
+    env="${2:-}"
+    (cd "$dir"
+     if [ -n "$env" ]; then tox -e "$env"; else tox; fi)
+    ;;
+  drift)
+    fetch=0; [ "${1:-}" = "--fetch" ] && fetch=1
+    while read -r _name path; do
+      [ -z "$path" ] && continue
+      printf '%-20s ' "$path"
+      if [ "$fetch" -eq 1 ]; then
+        (cd "$ROOT/$path" && git fetch --quiet --no-tags origin 2>/dev/null || true)
+      fi
+      local_head="$(cd "$ROOT/$path" && git rev-parse HEAD 2>/dev/null || echo '?')"
+      remote_head="$(cd "$ROOT/$path" && git rev-parse --quiet --verify refs/remotes/origin/master 2>/dev/null || echo '?')"
+      if [ "$remote_head" = '?' ]; then
+        echo "origin/master ref absent — run 'fz drift --fetch'"
+      elif [ "$local_head" = "$remote_head" ]; then
+        echo "pinned (upstream in sync)"
+      else
+        ahead="$(cd "$ROOT/$path" && git rev-list --count "$remote_head..HEAD" 2>/dev/null || echo 0)"
+        behind="$(cd "$ROOT/$path" && git rev-list --count "HEAD..$remote_head" 2>/dev/null || echo 0)"
+        echo "DRIFT: local=ahead:$ahead behind:$behind (pin:$(echo "$local_head" | cut -c1-8) upstream:$(echo "$remote_head" | cut -c1-8))"
+      fi
+    done <<< "$REPO_SUBFOLDER_DEFS"
+    ;;
+  triage)
+    url="https://bugs.launchpad.net/freezer"
+    echo "Freezer bug queue: $url"
+    [ "${1:-}" = "--open" ] && command -v xdg-open >/dev/null 2>&1 && xdg-open "$url"
+    ;;
+  audit)
+    bash "$ROOT/scripts/audit.sh"
+    ;;
+  *) usage ;;
+esac

@@ -1,0 +1,31 @@
+name: audit
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 3 * * 1"   # weekly readiness drift report
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Interrogate submodule state
+        run: |
+          python3 -c "import yaml"
+          bash scripts/audit.sh
+      - name: Report upstream drift (best-effort, offline-safe)
+        run: |
+          for d in code/freezer code/freezer-api code/freezer-web-ui code/python-freezerclient; do
+            (cd "$d" && git fetch --quiet --no-tags origin 2>/dev/null || true)
+          done
+          bash scripts/fz drift
+        continue-on-error: true

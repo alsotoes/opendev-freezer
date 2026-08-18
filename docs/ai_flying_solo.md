@@ -94,3 +94,5 @@ commit? / amend? / (never push)
 - Hacking style guide: https://docs.openstack.org/hacking/latest/
 - Reno release notes: https://docs.openstack.org/reno/latest/
 - Freezer bugs: https://bugs.launchpad.net/freezer
+- Umbrella tooling (venv-mandatory runners + checks): `scripts/fz`,
+  `scripts/bootstrap.sh`, `scripts/audit.sh` — see README "Developer Tooling"

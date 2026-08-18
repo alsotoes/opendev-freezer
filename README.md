@@ -50,6 +50,25 @@ git -C code/freezer-api log -p -- freezer_api/api/v2/sessions.py
 python3 -c "import yaml; yaml.safe_load(open('openspec/config.yaml'))"
 ```
 
+## Developer Tooling (umbrella root, read-only against code/ submodules)
+
+| Command | What it does |
+|---------|--------------|
+| `scripts/fz test <repo>` | Run unit tests in the submodule venv (`stestr`, or repo test runner) |
+| `scripts/fz lint <repo>` | CI-style lint in the venv (`flake8`/pre-commit) |
+| `scripts/fz tox <repo> [env]` | Run tox inside the submodule venv |
+| `scripts/fz drift [--fetch]` | Report submodule pin drift vs upstream `master` |
+| `scripts/fz triage [--open]` | Open the launchpad freezer bug queue |
+| `scripts/fz audit` | Full readiness report (alias of `scripts/audit.sh`) |
+| `scripts/bootstrap.sh [--quick]` | Create per-submodule venvs + CI-pinned deps + pre-commit hooks |
+| `scripts/audit.sh` | Offline consistency checks (config, docs sync, submodules, skills) |
+| `scripts/gerrit-fetch.sh <change-id>` | Fetch an OpenDev Gerrit change summary to `reviews/` |
+
+`repo` ∈ {`freezer`, `freezer-api`, `web-ui`, `client`}. Venv-mandatory rule:
+tools run only inside `code/<repo>/.venv`, never from the umbrella root.
+`scripts/*` and `.devcontainer/` give a reproducible environment (also via the
+GitHub Action in `.github/workflows/audit.yml` — check-only, never pushes).
+
 ## Analysis Workflow (TL;DR)
 
 1. Load `openspec/config.yaml` → REPOSITORY MAP, COMPONENT MAP, FEATURE PLACEMENT.

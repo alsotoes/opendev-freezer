@@ -1,0 +1,25 @@
+{
+  "name": "opendev-freezer", 
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind",
+  "workspaceFolder": "/workspace",
+  "mounts": [
+    "source=${localWorkspaceFolder}/.gitmodules,target=/workspace/.gitmodules,type=bind"
+  ],
+  "postCreateCommand": "bash scripts/bootstrap.sh --quick && bash scripts/audit.sh",
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "python.defaultInterpreterPath": "/workspace/code/freezer/.venv/bin/python",
+        "terminal.integrated.shellIntegration.enabled": true
+      },
+      "extensions": [
+        "ms-python.python",
+        "EditorConfig.EditorConfig"
+      ]
+    }
+  },
+  "runArgs": ["--name", "opendev-freezer-dev"]
+}

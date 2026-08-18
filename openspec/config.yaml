@@ -205,6 +205,10 @@ context: |
     openspec/changes/<change>/ with specs/freezer/<feature>/ delta spec.
   - For a new analysis task create a docs/ note + optionally an openspec change;
     never edit code/ submodules directly unless applying an approved change.
+  - Run submodule tools exclusively inside code/<repo>/.venv (venv-mandatory).
+    Preferred entry point: `scripts/fz` (test/lint/tox/drift/triage), with
+    `scripts/bootstrap.sh` for first-time setup and `scripts/audit.sh` for the
+    offline readiness report. These are umbrella-root scripts; `code/` stays clean.
   - Domain answers to common agent questions:
     * "job/session/action" → freezer-api domain model + freezer-web-ui panels
     * "how does a backup run" → code/freezer job.py + openstack/backup.py
