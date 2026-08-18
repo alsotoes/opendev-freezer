@@ -7,6 +7,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+. "$ROOT/scripts/lib/gerrit.sh"
 REPO_SUBFOLDER_DEFS="freezer code/freezer
 freezer-api code/freezer-api
 web-ui code/freezer-web-ui
@@ -34,6 +35,7 @@ in_venv() {
 }
 
 usage() {
+  Usage%s\nEOF
   cat <<'EOF'
 fz — run Freezer tools inside submodule venvs (umbrella root-only)
 
@@ -44,6 +46,9 @@ USAGE
   fz drift  [--fetch]              report submodule pin drift vs upstream master
   fz triage [--open]               launchpad freezer bug candidate queue
   fz audit                         full readiness check (scripts/audit.sh)
+  fz preview <repo> <ref>          diff a Gerrit/upstream ref vs current pin (no submodule writes)
+  fz search [<query>]              Gerrit change table across the 4 projects
+  fz status <change-id>            live votes (Verified/CR/WF) + last activity
 
 REPOS
   freezer | freezer-api | web-ui | client
@@ -112,7 +117,29 @@ case "$cmd" in
     [ "${1:-}" = "--open" ] && command -v xdg-open >/dev/null 2>&1 && xdg-open "$url"
     ;;
   audit)
-    bash "$ROOT/scripts/audit.sh"
+    bash "$ROOT/scripts/audit.sh" "$@"
     ;;
+  preview)
+    bash "$ROOT/scripts/upstream-preview.sh" "$@"
+    ;;
+  search)
+    bash "$ROOT/scripts/gerrit-search.sh" "$@"
+    ;;
+  status)
+    cid="${1:?need change-id}"
+    gerrit_get "changes/$cid?o=LABELS&o=MESSAGES&o=DETAILED_ACCOUNTS" | python3 -c '
+import sys, json
+d = json.load(sys.stdin)
+print("Change {n} [{st}] {sub}".format(n=d.get("_number"), st=d.get("status", "?"), sub=d.get("subject", "")))
+for label in ("Verified", "Code-Review", "Workflow"):
+    l = (d.get("labels") or {}).get(label, {})
+    who = l.get("all", [{}])[-1].get("username", "?") if l.get("all") else ""
+    print("  {label:<12} value={v}  by: {who}".format(label=label, v=l.get("value", "-"), who=who))
+msgs = d.get("messages") or []
+m = msgs[-1] if msgs else {}
+a = m.get("author") or {}
+print("  last: [{date}] {author}: {msg}".format(date=m.get("date", "?"),
+      author=a.get("name") or a.get("username") or "?", msg=(m.get("message") or "").strip()[:160]))
+' ;;
   *) usage ;;
 esac
