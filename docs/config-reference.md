@@ -16,6 +16,7 @@ Sections in the `context` block:
 | COMPONENT MAP | Per-submodule file-to-function layout of every repo |
 | DATA FLOW | How the agent, scheduler, API, client and UI talk to each other |
 | FEATURE PLACEMENT | Which feature/bugfix belongs in which repo (decision table) |
+| PARAMETER PLACEMENT | Which option/variable lives in which module (param classes A–D, placement rules) |
 | ONE-OFF ANALYSIS | Workflow for analyzing commits, features, bug fixes across repos |
 | GERRIT REVIEW ANALYSIS | How to read review.opendev.org conversations (votes, bots, patchsets, REST API) and a verdict-summary template |
 | AGENT & CLIENT USAGE | Guidance for openspec, Gemini, Cody, Kiro, antigravity, etc.: component answers and cross-repo search discipline |
@@ -80,12 +81,13 @@ operations:
 | `COMPONENT MAP` | Where each Freezer component lives per submodule |
 | `DATA FLOW` | How the four repos talk to each other (API ↔ client ↔ web-ui) |
 | `FEATURE PLACEMENT` | Which feature belongs in which repo (canonical "where is X") |
+| `PARAMETER PLACEMENT` | Which option lives in which module (canonical "where does option X go") |
 | `ONE-OFF ANALYSIS` | Commit / feature / bugfix analysis workflow |
 | `GERRIT REVIEW ANALYSIS` | Gerrit + Zuul verify semantics + verdict template |
 | `AGENT & CLIENT USAGE` | Which agents load what; `fz` tooling usage; domain answers |
 | `PROJECT STEERING RULES` | Normative engineering conventions + HITL guardrails (Rule 39) |
 
-These eight anchors MUST remain listed here: `scripts/audit.sh` verifies the mirror.
+These nine anchors MUST remain listed here: `scripts/audit.sh` verifies the mirror.
 
 #### `per-artifact_rules`
 - **Purpose**: Custom rules for specific artifact types (proposals, tasks)
@@ -145,8 +147,10 @@ These eight anchors MUST remain listed here: `scripts/audit.sh` verifies the mir
 1. **Add new per-artifact rules**: Edit `per-artifact_rules` section in `config.yaml`
 2. **Add new operations guidance**: Edit `operations` section in `config.yaml`
 3. **Add project-specific conventions**: Add to the `context` block under `Convention notes:`
-4. **Update repo layout / feature placement**: Edit the COMPONENT MAP / FEATURE PLACEMENT
-   sections in `context` (tree-change = structural doc update, mirrored here)
+4. **Update repo layout / feature placement / option placement**: Edit the COMPONENT MAP /
+   FEATURE PLACEMENT / PARAMETER PLACEMENT sections in `context` (tree-change =
+   structural doc update, mirrored here; the full analysis behind PARAMETER
+   PLACEMENT lives in `docs/parameter-placement.md`)
 5. **Create spec proposals**: Use the `openspec propose` skill with the config context
 6. **Archive changes**: Use the `openspec archive-change` skill, which references the
    operations guidance

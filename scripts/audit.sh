@@ -26,8 +26,8 @@ check "config.yaml parses as YAML" python3 -c "import yaml; yaml.safe_load(open(
 check "expected context sections present" python3 - "$ROOT" <<'PY'
 import sys, yaml
 sections = ["REPOSITORY MAP","COMPONENT MAP","DATA FLOW","FEATURE PLACEMENT",
-            "ONE-OFF ANALYSIS","GERRIT REVIEW ANALYSIS","AGENT & CLIENT USAGE",
-            "PROJECT STEERING RULES"]
+            "PARAMETER PLACEMENT","ONE-OFF ANALYSIS","GERRIT REVIEW ANALYSIS",
+            "AGENT & CLIENT USAGE","PROJECT STEERING RULES"]
 d = yaml.safe_load(open(sys.argv[1] + "/openspec/config.yaml"))
 ctx = d.get("context", "")
 raise SystemExit(0 if all(s in ctx for s in sections) else 1)

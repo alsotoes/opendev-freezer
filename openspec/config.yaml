@@ -325,6 +325,37 @@ context: |
     - Swift storage rmtree: always pass full_listing=True to get_container. Without
       pagination, only the first 10000 objects are deleted, leaving segments orphaned.
 
+  # ───────────────────────────────────────────────────────────────────────
+  # PARAMETER PLACEMENT — which option lives in which module
+  # ───────────────────────────────────────────────────────────────────────
+  # Feature-level boundaries are defined by FEATURE PLACEMENT above; this
+  # section decides WHERE an option/variable lives INSIDE the repos.
+  Param classes (classify every new option first):
+    A. JOB/BACKUP semantics (what/where/how to back up: mode, engine,
+       storage, dates, limits, encryption) → freezer/common/config.py
+       _COMMON + DEFAULT_PARAMS. Never in scheduler/arguments.py.
+    B. SCHEDULER DAEMON behavior (polling, registration, clustering,
+       auth of the scheduler process) → freezer/scheduler/arguments.py
+       groups [scheduler]/[service_auth]/[coordination].
+    C. NODE CAPABILITIES (what this node supports) → [capabilities]
+       group; flows into API clients record.
+    D. METADATA WIRE SHAPE (any field crossing repo boundary) →
+       freezer-api common/json_schemas.py FIRST, then ripple:
+       client managers/CLI → UI workflows. Agent option and job_action
+       field share the dashed name; add both in one change.
+  Placement rules:
+    - New agent option: StrOpt in _COMMON + DEFAULT_PARAMS entry +
+      json_schemas job_action property (if job-settable) + osc/UI follow-up.
+    - Validation at option definition (oslo choices/min), semantics in
+      get_backup_args() merge path or engine; never in scheduler.
+    - Derived values (backup_media, trickle_command) computed ONLY in
+      get_backup_args(); consumers read backup_args, never recompute.
+    - python-freezerclient: no oslo config ever; env/args only.
+    - freezer-web-ui: no oslo opts; Django enabled/ files + utils.py
+      URL resolution only.
+    - DB/storage backend opts → freezer-api [storage] group; sqlalchemy
+      only, no ES resurrection.
+
 per-artifact_rules:
   task:
     - Break tasks into chunks of max 2 hours
